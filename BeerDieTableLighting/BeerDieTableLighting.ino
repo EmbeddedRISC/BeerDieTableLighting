@@ -27,15 +27,19 @@
 
 // LEDs
 #define LED_STRING_LEN      50
-#define BLUE_SIDE_LED_PIN   10
-#define ORANGE_SIDE_LED_PIN 11
+#define BLUE_SIDE_LED_PIN   2
+#define ORANGE_SIDE_LED_PIN 3
 
 CRGB blue_side_leds[LED_STRING_LEN];
 CRGB orange_side_leds[LED_STRING_LEN];
 
 // ADC
-#define HIT_VAL    100
-#define ADC_CS_PIN 9
+#define HIT_THRESHOLD 100
+#define SIDE_HIT_DIFF 25
+#define ADC_CS_PIN    9
+
+#define BLUE_ADC_IDX   0
+#define ORANGE_ADC_IDX 1
 
 short adc_vals[2];
 
@@ -48,10 +52,13 @@ short adc_vals[2];
 void setup() {
   #ifdef SERIAL_DEBUG
     Serial.begin(500000);
+    Serial.print("Size of adcs_vals: ");
+    Serial.println(sizeof(adc_vals));
   #endif
   
   // Setup the SPI Interface
   SPI.begin();
+  SPI.setClockDivider(SPI_CLOCK_DIV2);
   
   // Setup the LED Interfaces
   FastLED.addLeds<WS2811, BLUE_SIDE_LED_PIN>(blue_side_leds, LED_STRING_LEN);
@@ -61,12 +68,62 @@ void setup() {
 
 // Main Program Loop
 void loop() {
+  read_adc();
+  
+  if ((adc_vals[BLUE_ADC_IDX] > HIT_THRESHOLD) && (adc_vals[ORANGE_ADC_IDX] > HIT_THRESHOLD)) {
+    if (adc_vals[BLUE_ADC_IDX] > adc_vals[ORANGE_ADC_IDX] + SIDE_HIT_DIFF) {
+      blue_hit();
+    }
+    else if (adc_vals[ORANGE_ADC_IDX] > adc_vals[BLUE_ADC_IDX] + SIDE_HIT_DIFF) {
+      orange_hit();
+    }
+    else {
+      middle_hit();
+    }
+  }
+  else if (adc_vals[BLUE_ADC_IDX] > HIT_THRESHOLD) {
+    blue_hit();
+  }
+  else if (adc_vals[ORANGE_ADC_IDX] > HIT_THRESHOLD) {
+    orange_hit();
+  }
+  
+}
 
+void blue_hit() {
+  blue_hit_lights();
+  delay(1);
+  reset_lights();
+}
+      
+void orange_hit() {
+  orange_hit_lights();
+  delay(1);
+  reset_lights();
+}
+
+void middle_hit() {
+  middle_hit_lights();
+  delay(1);
+  reset_lights();
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // Helper Functions
 /////////////////////////////////////////////////////////////////////////////
+
+// Fetch the ADC Data
+void read_adc() {
+   SPI.transfer(adc_vals, sizeof(adc_vals));
+  // TODO: Convert 12-bit 2's Complement to 16-bit
+  
+  #ifdef SERIAL_DEBUG
+    Serial.print("ADC0-Blue: ");
+    Serial.println(adc_vals[BLUE_ADC_IDX]);
+    Serial.print("ADC-Orange: ");
+    Serial.println(adc_vals[ORANGE_ADC_IDX]);
+  #endif
+}
 
 // Reset the lighting effects to the default
 void reset_lights() {
