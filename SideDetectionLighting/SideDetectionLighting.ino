@@ -52,13 +52,12 @@ short adc_vals[2];
 void setup() {
   #ifdef SERIAL_DEBUG
     Serial.begin(500000);
-    Serial.print("Size of adcs_vals: ");
-    Serial.println(sizeof(adc_vals));
   #endif
   
   // Setup the SPI Interface
   SPI.begin();
   SPI.setClockDivider(SPI_CLOCK_DIV2);
+  SPI.setDataMode(SPI_MODE3);
   
   // Setup the LED Interfaces
   FastLED.addLeds<WS2811, BLUE_SIDE_LED_PIN>(blue_side_leds, LED_STRING_LEN);
@@ -92,19 +91,19 @@ void loop() {
 
 void blue_hit() {
   blue_hit_lights();
-  delay(1);
+  delay(1000);
   reset_lights();
 }
       
 void orange_hit() {
   orange_hit_lights();
-  delay(1);
+  delay(1000);
   reset_lights();
 }
 
 void middle_hit() {
   middle_hit_lights();
-  delay(1);
+  delay(1000);
   reset_lights();
 }
 
@@ -114,15 +113,36 @@ void middle_hit() {
 
 // Fetch the ADC Data
 void read_adc() {
-   SPI.transfer(adc_vals, sizeof(adc_vals));
+  digitalWrite(SS, LOW);
+  adc_vals[BLUE_ADC_IDX] = SPI.transfer16(0);
+  adc_vals[ORANGE_ADC_IDX] = SPI.transfer16(0);
+  digitalWrite(SS, HIGH);
   // TODO: Convert 12-bit 2's Complement to 16-bit
   
+  #ifdef SERIAL_DEBUG
+    Serial.print("ADC0-Blue: ");
+    Serial.println(String(adc_vals[BLUE_ADC_IDX], HEX));
+    Serial.print("ADC-Orange: ");
+    Serial.println(String(adc_vals[ORANGE_ADC_IDX], HEX));
+  #endif
+  
+  if (adc_vals[BLUE_ADC_IDX] & 0x800) {
+    adc_vals[BLUE_ADC_IDX] |= 0xF000;    
+  }
+
+  if (adc_vals[ORANGE_ADC_IDX] & 0x800) {
+    adc_vals[ORANGE_ADC_IDX] |= 0xF000;
+  }
+
   #ifdef SERIAL_DEBUG
     Serial.print("ADC0-Blue: ");
     Serial.println(adc_vals[BLUE_ADC_IDX]);
     Serial.print("ADC-Orange: ");
     Serial.println(adc_vals[ORANGE_ADC_IDX]);
+    Serial.println();
   #endif
+
+  delay(2000);
 }
 
 // Reset the lighting effects to the default
