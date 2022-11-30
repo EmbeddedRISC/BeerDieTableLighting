@@ -1,0 +1,10 @@
+.vscode/
+
+# Arduino Commons
+libraries/*/
+!libraries/SmartLED/
+
+# KiCad
+*-backups/
+Gerbers/
+

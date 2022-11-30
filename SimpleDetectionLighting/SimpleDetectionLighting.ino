@@ -15,8 +15,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  ***************************************************************************/
+// First simple implementation used 1619 bytes
+// Second implementation used 745 bytes
 
-#include "FastLED.h"
+#include "SmartLED.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // Definitions and Global Variables
@@ -25,12 +27,18 @@
 #define SERIAL_DEBUG
 
 // LEDs
+#define LED_REFRESH_RATE_MS 50
+#define TRANSITION_TIME_MS (short)500
+#define EFFECT_RATE 20
+
 #define LED_STRING_LEN      50
 #define BLUE_SIDE_LED_PIN   4
 #define ORANGE_SIDE_LED_PIN 3
 
-CRGB blue_side_leds[LED_STRING_LEN];
-CRGB orange_side_leds[LED_STRING_LEN];
+LedChain<LED_STRING_LEN, BLUE_SIDE_LED_PIN> blue_leds(TRANSITION_TIME_MS, LED_REFRESH_RATE_MS, EFFECT_RATE);
+LedChain<LED_STRING_LEN, ORANGE_SIDE_LED_PIN> orange_leds(TRANSITION_TIME_MS, LED_REFRESH_RATE_MS, EFFECT_RATE);
+
+CRGB leds[LED_STRING_LEN];
 
 // Vib Sensor
 #define VIB_SENSOR_PIN A0
@@ -45,35 +53,32 @@ void setup() {
     Serial.begin(500000);
   #endif
 
+  // Initialize Randomization
+  randomSeed(analogRead(A4));
+
   // Setup the Vib Sensor
 
   // Setup the LED Interfaces
-  FastLED.addLeds<WS2811, BLUE_SIDE_LED_PIN>(blue_side_leds, LED_STRING_LEN);
-  FastLED.addLeds<WS2811, ORANGE_SIDE_LED_PIN>(orange_side_leds, LED_STRING_LEN);
-  reset_lights();
+
+  blue_leds.init();
+  blue_leds.setAlternating(CRGB::Blue, CRGB::Purple);
+  orange_leds.init();
+  orange_leds.setAlternating(CRGB::Orange, CRGB::Red);
+
+  blue_leds.animation = TWINKLE;
+  orange_leds.animation = TWINKLE;
+
+  FastLED.show();
 }
 
 // Main Program Loop
 void loop() {
-  int vib_val = analogRead(VIB_SENSOR_PIN);  
-  
-  Serial.println(vib_val);
-}
+  int vib_val = analogRead(VIB_SENSOR_PIN);
+  // Serial.println(vib_val);
 
-
-/////////////////////////////////////////////////////////////////////////////
-// Helper Functions
-/////////////////////////////////////////////////////////////////////////////
-
-// Reset the lighting effects to the default
-void reset_lights() {
-  #ifdef SERIAL_DEBUG
-    Serial.println("reset_lights");  
-  #endif
-
-  for (int i = 11; i < 20; i++) {
-    blue_side_leds[i] = CRGB::Purple;
-    orange_side_leds[i] = CRGB::Orange;
-  }
+  blue_leds.loop();
+  orange_leds.loop();
   FastLED.show();
+
+  delay(LED_REFRESH_RATE_MS);
 }
